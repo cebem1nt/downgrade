@@ -28,7 +28,7 @@ downgrade -g waybar swaync
 ```
 
 Additional help:
-```sh
+```
 downgrade --help
 
 usage: downgrade [-h] [-f] [-i] [-I PACKAGE [PACKAGE ...]] [-g PACKAGE [PACKAGE ...]] [packages ...]
