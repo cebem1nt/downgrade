@@ -7,25 +7,30 @@ To downgrade package, run script and pass package you want to downgrade with its
 sudo downgrade waybar 0.13
 ```
 
+
 You can also downgrade more than one package at the same time like this:
 ```sh
 sudo downgrade linux-lts 6.1.7 linux-lts-headers 6.1.7 
 ```
+
 
 To add downgraded packages to ignorelist (meaning next system update wont update downgraded packages) you can pass -i or --ignore argument to it, like this:
 ```sh
 sudo downgrade --ignore swaync 0.10 waybar 0.12 
 ```
 
+
 To remove those packages from ignorelist later, you can run:
 ```sh
 sudo downgrade --ignore-remove swaync waybar
 ```
 
+
 If you want to just see, what package versions did [pacman save for provided package](https://wiki.archlinux.org/title/Pacman#Package_cache_directory), you can do it as following:
 ```sh
 downgrade -g waybar swaync
 ```
+
 
 Additional help:
 ```
