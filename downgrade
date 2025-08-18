@@ -93,7 +93,7 @@ def get_remote_version(pkg: str, version: str) -> str | None:
 
         for link in links:
             href: str = link.get('href')
-            remote_version = href.replace(pkg + "-")
+            remote_version = href.replace(pkg + "-", "")
 
             if href and (remote_version.startswith(version)) and not remote_version.endswith('.sig'):
                 return url + '/' + href
