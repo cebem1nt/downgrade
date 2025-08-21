@@ -14,7 +14,7 @@ sudo downgrade linux-lts 6.1.7 linux-lts-headers 6.1.7
 ```
 
 
-To add downgraded packages to ignorelist (meaning next system update wont update downgraded packages) you can pass -i or --ignore argument to it, like this:
+To add downgraded [packages to ignorelist](https://wiki.archlinux.org/title/Pacman#Skip_package_from_being_upgraded) you can pass -i or --ignore flag to it, like this:
 ```sh
 sudo downgrade --ignore swaync 0.10 waybar 0.12 
 ```
