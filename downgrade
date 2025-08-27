@@ -160,7 +160,7 @@ def main(args: any):
             sys.exit(1)
 
         if args.ignore:
-            print(f"Adding {' '.join(pkgs)} to ignore list...")
+            print(f"Adding {' '.join(pkgs_names)} to ignore list...")
             ignore_pkgs(pkgs)
     
 
