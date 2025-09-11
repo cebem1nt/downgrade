@@ -161,7 +161,7 @@ def main(args: any):
 
         if args.ignore:
             print(f"Adding {' '.join(pkgs_names)} to ignore list...")
-            ignore_pkgs(pkgs)
+            ignore_pkgs(pkgs_names)
     
 
 if __name__ == '__main__':
