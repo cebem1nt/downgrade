@@ -83,6 +83,23 @@ def get_cached_version(pkg: str, version: str) -> str | None:
         if is_matching_package(d, pkg, version):
             return os.path.join(CACHE_DIR, d)
 
+def get_previous_cached_version(pkg: str, current_version: str) -> str | None:
+    current_version_index = None
+    dirs = sorted(
+        (d for d in os.listdir(CACHE_DIR) if d.startswith(pkg) and not d.endswith('.sig')),
+        reverse=True
+    )
+
+    for i in range(len(dirs)):
+        if current_version in dirs[i]:
+            current_version_index = i
+            break
+    
+    if current_version_index < len(dirs)-1:
+        return os.path.join(CACHE_DIR, dirs[i+1])
+
+    return None
+
 def get_remote_version(pkg: str, version: str) -> str | None:
     url = f'https://archive.archlinux.org/packages/{pkg[0]}/{pkg}'
     response = requests.get(url)
@@ -101,7 +118,11 @@ def get_remote_version(pkg: str, version: str) -> str | None:
     else:
         print(f"Failed to retrieve the URL. Status code: {response.status_code}")
 
-def get_downgrade_version(pkg: str, version: str, do_force: bool = False) -> str:
+def get_downgrade_version(
+    pkg: str, 
+    version: str, 
+    do_force: bool = False
+) -> str:
     package_info = subprocess.run(f"pacman -Q {pkg}", shell=True, text=True, capture_output=True)
 
     if package_info.returncode != 0:
@@ -109,13 +130,17 @@ def get_downgrade_version(pkg: str, version: str, do_force: bool = False) -> str
         sys.exit(1)
 
     current_version = package_info.stdout.split()[-1]
+    cached_version = None
 
     if version in current_version and not do_force:
         print(f'Provided version "{version}" is currently used ("{current_version}")')
         sys.exit(1)
 
-    cached_version = get_cached_version(pkg, version)
-
+    if version == "previous":
+        cached_version = get_previous_cached_version(pkg, current_version)
+    else:
+        cached_version = get_cached_version(pkg, version)
+    
     if cached_version:
         print(f"Found desired version: {cached_version}")
         return cached_version
@@ -131,11 +156,10 @@ def get_downgrade_version(pkg: str, version: str, do_force: bool = False) -> str
             print(f"No version {version} found for {pkg}")
             sys.exit(1)
 
-def main(args: any): 
-    if args.ignore_remove or len(args.packages):
-        if os.geteuid() != 0:
-            print("Script must be executed as root")
-            sys.exit(1)
+def main(args: argparse.Namespace): 
+    if args.ignore_remove or len(args.packages) and os.geteuid() != 0:
+        print("Script must be executed as root")
+        sys.exit(1)
 
     if args.get_cached:
         find_cached_versions(args.get_cached)
@@ -147,11 +171,20 @@ def main(args: any):
         pkgs_paths = []
         pkgs_names = []
 
-        for i in range(0, len(args.packages), 2):
-            pkg, version = args.packages[i], args.packages[i+1]
-            found_pkg_path = get_downgrade_version(pkg, version, args.force)
+        if len(args.packages) == 1:
+            pkg = args.packages[0]
+            found_pkg_path = get_downgrade_version(pkg, "previous", args.force)
+
             pkgs_paths.append(found_pkg_path)
             pkgs_names.append(pkg)
+
+        else:
+            for i in range(0, len(args.packages), 2):
+                pkg, version = args.packages[i], args.packages[i+1]
+                found_pkg_path = get_downgrade_version(pkg, version, args.force)
+
+                pkgs_paths.append(found_pkg_path)
+                pkgs_names.append(pkg)
 
         try:
             downgrade_pkgs(pkgs_paths)
@@ -176,8 +209,8 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--get-cached',    metavar='PACKAGE',  nargs='+', help='Print cached versions for the specified package[s]')
 
     args = parser.parse_args()
-
-    if len(args.packages) % 2 != 0:
+    
+    if (len(args.packages) % 2 != 0) and len(args.packages) != 1:
         print("Error: Each package must have a corresponding version.")
         sys.exit(1)
 
