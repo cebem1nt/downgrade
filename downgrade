@@ -157,8 +157,8 @@ def get_downgrade_version(
             sys.exit(1)
 
 def main(args: argparse.Namespace): 
-    if args.ignore_remove or len(args.packages) and os.geteuid() != 0:
-        print("Script must be executed as root")
+    if (args.ignore_remove or len(args.packages)) and os.geteuid() != 0:
+        print("Error: downgrade must be executed as root")
         sys.exit(1)
 
     if args.get_cached:
