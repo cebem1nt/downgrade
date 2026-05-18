@@ -64,6 +64,6 @@ options:
   -i, --ignore          If downgrading package, additionally adds downgraded packages to ignorelist
   -I, --ignore-remove PACKAGE [PACKAGE ...]
                         Remove provided package[s] from ignorelist
-  -g, --get-cached PACKAGE [PACKAGE ...]
+  -g, --get PACKAGE [PACKAGE ...]
                         Print cached versions for the specified package[s]
 ```

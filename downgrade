@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, subprocess, requests, argparse, sys, configparser
+import os, subprocess, requests, argparse, sys, configparser, re
 from bs4 import BeautifulSoup
 
 BLACKLIST = '/etc/pacman.d/blacklist.conf'
@@ -74,7 +74,11 @@ def find_cached_versions(pkgs: list[str]) -> None:
 
     for d in listed:
         for pkg in pkgs:
-            if not d.endswith('.sig') and d.startswith(pkg):
+            if d.endswith('.sig'):
+                continue
+
+            pkg_reg = rf"^{pkg}-\d"
+            if re.match(pkg_reg, d):
                 print(os.path.join(CACHE_DIR, d))
 
 
@@ -161,8 +165,8 @@ def main(args: argparse.Namespace):
         print("Error: downgrade must be executed as root")
         sys.exit(1)
 
-    if args.get_cached:
-        find_cached_versions(args.get_cached)
+    if args.get:
+        find_cached_versions(args.get)
 
     if args.ignore_remove:
         remove_ignore_pkgs(args.ignore_remove)
@@ -206,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--force',         action='store_true',           help='Downgrade package even if provided version is the same as installed')
     parser.add_argument('-i', '--ignore',        action='store_true',           help='If downgrading package, additionally adds downgraded packages to ignorelist')
     parser.add_argument('-I', '--ignore-remove', metavar='PACKAGE',  nargs='+', help='Remove provided package[s] from ignorelist')
-    parser.add_argument('-g', '--get-cached',    metavar='PACKAGE',  nargs='+', help='Print cached versions for the specified package[s]')
+    parser.add_argument('-g', '--get',           metavar='PACKAGE',  nargs='+', help='Print cached versions for the specified package[s]')
 
     args = parser.parse_args()
     
