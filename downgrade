@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import os, subprocess, requests, argparse, sys, configparser, re
+import os, subprocess, requests, argparse, re
 from bs4 import BeautifulSoup
+from configparser import ConfigParser
 
 BLACKLIST = '/etc/pacman.d/blacklist.conf'
 CACHE_DIR = '/var/cache/pacman/pkg'
@@ -15,7 +16,7 @@ def write_to_blacklist_config(pkgs: list[str]):
 
 def remove_ignore_pkgs(pkgs: list[str]):
     if os.path.exists(BLACKLIST):
-        config = configparser.ConfigParser()
+        config = ConfigParser()
         config.read(BLACKLIST)
 
         current_ignore_pkg = config.get("options", "IgnorePkg", fallback="")
@@ -43,7 +44,7 @@ def ignore_pkgs(pkgs: list[str]):
         write_to_blacklist_config(pkgs)
 
     else:
-        config = configparser.ConfigParser()
+        config = ConfigParser()
         config.read(BLACKLIST)
 
         current_ignore_pkg = config.get("options", "IgnorePkg", fallback="")
@@ -54,6 +55,15 @@ def ignore_pkgs(pkgs: list[str]):
                 ignore_pkgs_list.append(pkg)
 
         write_to_blacklist_config(ignore_pkgs_list)
+
+def find_cached(queries: list[str]) -> None:
+    for d in os.listdir(CACHE_DIR):
+        for query in queries:
+            if d.endswith('.sig'):
+                continue
+
+            if re.match(rf"^{query}-\d", d):
+                print(os.path.join(CACHE_DIR, d))
 
 def is_matching_package(basename: str, name: str, version: str) -> bool:
     if basename.endswith(".sig"):
@@ -68,19 +78,6 @@ def is_matching_package(basename: str, name: str, version: str) -> bool:
         return False
 
     return True
-
-def find_cached_versions(pkgs: list[str]) -> None:
-    listed = os.listdir(CACHE_DIR)
-
-    for d in listed:
-        for pkg in pkgs:
-            if d.endswith('.sig'):
-                continue
-
-            pkg_reg = rf"^{pkg}-\d"
-            if re.match(pkg_reg, d):
-                print(os.path.join(CACHE_DIR, d))
-
 
 def get_cached_version(pkg: str, version: str) -> str | None:
     for d in os.listdir(CACHE_DIR):
@@ -127,18 +124,18 @@ def get_downgrade_version(
     version: str, 
     do_force: bool = False
 ) -> str:
-    package_info = subprocess.run(f"pacman -Q {pkg}", shell=True, text=True, capture_output=True)
+    package_info = subprocess.run(["pacman", "-Q", pkg], text=True, capture_output=True)
 
     if package_info.returncode != 0:
         print(f'Package "{pkg}" is not installed or does not exist.')
-        sys.exit(1)
+        exit(1)
 
     current_version = package_info.stdout.split()[-1]
     cached_version = None
 
     if version in current_version and not do_force:
         print(f'Provided version "{version}" is currently used ("{current_version}")')
-        sys.exit(1)
+        exit(1)
 
     if version == "previous":
         cached_version = get_previous_cached_version(pkg, current_version)
@@ -158,15 +155,15 @@ def get_downgrade_version(
 
         else:
             print(f"No version {version} found for {pkg}")
-            sys.exit(1)
+            exit(1)
 
 def main(args: argparse.Namespace): 
     if (args.ignore_remove or len(args.packages)) and os.geteuid() != 0:
         print("Error: downgrade must be executed as root")
-        sys.exit(1)
+        return 1
 
-    if args.get:
-        find_cached_versions(args.get)
+    if args.find:
+        find_cached(args.find)
 
     if args.ignore_remove:
         remove_ignore_pkgs(args.ignore_remove)
@@ -183,10 +180,8 @@ def main(args: argparse.Namespace):
             pkgs_names.append(pkg)
 
         else:
-            for i in range(0, len(args.packages), 2):
-                pkg, version = args.packages[i], args.packages[i+1]
+            for pkg, version in zip(args.packages, args.versions):
                 found_pkg_path = get_downgrade_version(pkg, version, args.force)
-
                 pkgs_paths.append(found_pkg_path)
                 pkgs_names.append(pkg)
 
@@ -194,7 +189,7 @@ def main(args: argparse.Namespace):
             downgrade_pkgs(pkgs_paths)
 
         except KeyboardInterrupt:
-            sys.exit(1)
+            return 1
 
         if args.ignore:
             print(f"Adding {' '.join(pkgs_names)} to ignore list...")
@@ -203,19 +198,20 @@ def main(args: argparse.Namespace):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Downgrade specified packages to given versions or get cached versions. Ignored packages can be found in /etc/pacman.d/blacklist.conf'
+        description='Downgrade specified packages to given versions or get cached versions.',
+        epilog="Ignored packages can be found in /etc/pacman.d/blacklist.conf"
     )
     
-    parser.add_argument('packages',                                  nargs='*', help='Packages and their versions in the format pkg version')
-    parser.add_argument('-f', '--force',         action='store_true',           help='Downgrade package even if provided version is the same as installed')
-    parser.add_argument('-i', '--ignore',        action='store_true',           help='If downgrading package, additionally adds downgraded packages to ignorelist')
-    parser.add_argument('-I', '--ignore-remove', metavar='PACKAGE',  nargs='+', help='Remove provided package[s] from ignorelist')
-    parser.add_argument('-g', '--get',           metavar='PACKAGE',  nargs='+', help='Print cached versions for the specified package[s]')
+    parser.add_argument('packages',              metavar='PACKAGE',  nargs='*', help='package[s] with corresponding version in the format: <PACKAGE> <VERSION>. If Only <PACKAGE> is provided, downgrade to previous version')
+    parser.add_argument('-f', '--find',          metavar='PACKAGE',  nargs='+', help='print cached versions for the specified package[s]')
+    parser.add_argument('-I', '--ignore-remove', metavar='PACKAGE',  nargs='+', help='remove provided package[s] from ignorelist')
+    parser.add_argument('-i', '--ignore',        action='store_true',           help='if downgrading package, add downgraded packages to ignorelist')
+    parser.add_argument('--force',               action='store_true',           help='downgrade package even if provided version is the same as installed')
 
     args = parser.parse_args()
     
     if (len(args.packages) % 2 != 0) and len(args.packages) != 1:
-        print("Error: Each package must have a corresponding version.")
-        sys.exit(1)
+        parser.error("Each package must have a corresponding version.")
+        exit(1)
 
-    main(args)
+    exit(main(args))
