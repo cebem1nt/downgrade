@@ -49,21 +49,21 @@ downgrade -g waybar swaync
 
 Additional help:
 ```
-downgrade --help
+usage: downgrade [-h] [-f PACKAGE [PACKAGE ...]] [-I PACKAGE [PACKAGE ...]] [-i] [--force] [PACKAGE ...]
 
-usage: downgrade [-h] [-f] [-i] [-I PACKAGE [PACKAGE ...]] [-g PACKAGE [PACKAGE ...]] [packages ...]
-
-Downgrade specified packages to given versions or get cached versions. Ignored packages can be found in /etc/pacman.d/blacklist.conf
+Downgrade specified packages to given versions or get cached versions.
 
 positional arguments:
-  packages              Packages and their versions in the format pkg version
+  PACKAGE               package[s] with corresponding version in the format: <PACKAGE> <VERSION>. If Only <PACKAGE> is provided, downgrade to previous version
 
 options:
   -h, --help            show this help message and exit
-  -f, --force           Downgrade package even if provided version is the same as installed
-  -i, --ignore          If downgrading package, additionally adds downgraded packages to ignorelist
+  -f, --find PACKAGE [PACKAGE ...]
+                        print cached versions for the specified package[s]
   -I, --ignore-remove PACKAGE [PACKAGE ...]
-                        Remove provided package[s] from ignorelist
-  -g, --get PACKAGE [PACKAGE ...]
-                        Print cached versions for the specified package[s]
+                        remove provided package[s] from ignorelist
+  -i, --ignore          if downgrading package, add downgraded packages to ignorelist
+  --force               downgrade package even if provided version is the same as installed
+
+Ignored packages can be found in /etc/pacman.d/blacklist.conf
 ```
